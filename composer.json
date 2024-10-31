@@ -1,0 +1,16 @@
+{
+    "name": "aramayis/test",
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Providers\\": "providers/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Aramayis",
+            "email": "aramayismirzoyan@yahoo.com"
+        }
+    ],
+    "require": {}
+}
