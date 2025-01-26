@@ -1,9 +1,10 @@
 <?php
 
-use App\UserController;
-use Providers\RouteProviders;
+use App\Container\ContainerFactory;
+use Providers\RouteProvider;
 
 require './vendor/autoload.php';
 
-$route = new RouteProviders();
+$container = ContainerFactory::create();
+$route = new RouteProvider($container);
 $route->run();
