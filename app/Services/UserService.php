@@ -3,41 +3,59 @@
 namespace App\Services;
 
 use App\Helpers\Request;
+use App\Helpers\Response;
 use App\Helpers\Validator;
+use App\Repositories\UserRepository;
+use Providers\PDOProvider;
 
 class UserService
 {
-    public function getNewUserValidator($data) :Validator
+    public function __construct(private readonly UserRepository $repository)
     {
-        $validator = new Validator([
-            'full_name' => Request::getParam($data, 'full_name'),
-            'role' => Request::getParam($data, 'role'),
-            'efficiency' => Request::getParam($data, 'efficiency'),
-        ]);
-
-        $validator->setRequired('full_name');
-        $validator->setRequired('role');
-        $validator->setRequired('efficiency');
-
-        $validator->setLength('full_name', 100);
-        $validator->setLength('role', 100);
-        $validator->setAsInt('efficiency');
-
-        return $validator;
     }
 
-    public function getUpdateUserValidator($data) :Validator
+    public function create($data): string
     {
-        $validator = new Validator([
-            'full_name' => Request::getParam($data, 'full_name'),
-            'role' => Request::getParam($data, 'role'),
-            'efficiency' => Request::getParam($data, 'efficiency'),
-        ]);
+        $id = $this->repository->create($data);
 
-        $validator->setLength('full_name', 100);
-        $validator->setLength('role', 100);
-        $validator->setAsInt('efficiency');
-
-        return $validator;
+        if (is_int($id)) {
+            return Response::send([
+                'success' => true,
+                'result' => [
+                    'id' => $id
+                ],
+            ]);
+        } else {
+            return Response::sendServerError();
+        }
     }
+
+    public function update(int $userId, array $data)
+    {
+        $user = $this->repository->hasUser($userId);
+
+        if (!$user) {
+            return Response::sendNotFoundError();
+        }
+
+        if (!Validator::hasAtLeastOneInData($data, [
+            'full_name', 'role', 'efficiency'
+        ])) {
+            return Response::send([
+                'success' => true,
+                'result' => $user[0]
+            ]);
+        }
+
+        if ($result = $this->repository->update($data, $userId)) {
+            return Response::send([
+                'success' => true,
+                'result' => $result[0]
+            ]);
+        }
+
+        return Response::sendServerError();
+    }
+
+
 }

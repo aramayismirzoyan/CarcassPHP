@@ -7,40 +7,42 @@ use Providers\PDOProvider;
 
 class UserRepository
 {
-    public static function create($data): int|false
+    public function __construct(private readonly PDOProvider $connection)
     {
-        $connection = PDOProvider::create();
+    }
 
+    public function create($data): int|false
+    {
         $sql = 'INSERT INTO users (full_name, role, efficiency) VALUES (:full_name, :role, :efficiency)';
 
-        return $connection->insert($sql, [
+        return $this->connection->insert($sql, [
             'full_name' => $data['full_name'],
             'role' => $data['role'],
             'efficiency' => $data['efficiency'],
         ]);
     }
 
-    public static function getFiltered() :array
+    public static function getFiltered(): array
     {
         $connection = PDOProvider::create();
 
         $sql = 'SELECT * FROM users';
 
-        $role = Request::getParam($_GET, 'role');
+        $role = (new Request())->getParam($_GET, 'role');
 
-        if($role !== '') {
+        if ($role !== '') {
             $sql .= ' WHERE role=:role';
             $users = $connection->getWithParams($sql, [
                 'role' => $role
             ]);
         } else {
-            $users = $connection->get($sql);
+            $users = $connection->execute($sql);
         }
 
         return $users;
     }
 
-    public static function getById($id) :array
+    public static function getById($id): array
     {
         $connection = PDOProvider::create();
 
@@ -51,7 +53,7 @@ class UserRepository
         ]);
     }
 
-    public static function hasUser($id): array|false
+    public function hasUser($id): array|false
     {
         $user = self::getById($id);
 
@@ -64,7 +66,7 @@ class UserRepository
         $params = [];
 
         foreach ($fields as $field) {
-            if(isset($data[$field])) {
+            if (isset($data[$field])) {
                 $params[$field] = $data[$field];
                 $sql[] = "{$field}=:{$field}";
             }
@@ -78,8 +80,6 @@ class UserRepository
 
     public function update($data, $userId): array|false
     {
-        $connection = PDOProvider::create();
-
         $sql = "UPDATE users SET ";
 
         $fields = $this->addUpdatedFieldsInSQL($data, ['full_name', 'role', 'efficiency']);
@@ -90,6 +90,16 @@ class UserRepository
 
         $sql .= " WHERE id=:id";
 
-        return $connection->update($sql, $fields['params']);
+        return $this->connection->update($sql, $fields['params'], 'users');
+    }
+
+    public function delete()
+    {
+        return $this->connection->delete('users');
+    }
+
+    public function deleteById($userId)
+    {
+        return $this->connection->deleteById($userId, 'users');
     }
 }
