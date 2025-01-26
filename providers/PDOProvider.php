@@ -2,7 +2,7 @@
 
 namespace Providers;
 
-use App\Enums\ConfigPaths;
+use App\Enums\ConfigsPaths;
 use PDO;
 
 final class PDOProvider
@@ -12,7 +12,7 @@ final class PDOProvider
 
     final private function __construct()
     {
-        $config = include(ConfigPaths::DB->get());
+        $config = include(ConfigsPaths::DB->get());
 
         $this->connection = $this->getConnection($config);
     }
