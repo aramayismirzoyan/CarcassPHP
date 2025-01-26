@@ -12,7 +12,7 @@ enum ConfigsPaths
         $rootPath = dirname(dirname(__DIR__));
         return match ($this) {
             self::DB => $rootPath . DIRECTORY_SEPARATOR. 'config' . DIRECTORY_SEPARATOR . 'db.php',
-            self::ROUTES => $rootPath . DIRECTORY_SEPARATOR. 'config' . DIRECTORY_SEPARATOR.  'routes.php',
+            self::ROUTES => $rootPath . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'routes.php',
             default => ''
         };
     }
