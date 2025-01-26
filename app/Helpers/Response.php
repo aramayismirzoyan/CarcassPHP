@@ -4,48 +4,46 @@ namespace App\Helpers;
 
 class Response
 {
-    public static function send($data): void
+    private static function setJsonHeader()
     {
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode($data);
-
-        die();
     }
 
-    public static function sendValidatorError($data): void
+    public static function send($data): string
     {
+        self::setJsonHeader();
+        http_response_code(200);
+        return json_encode($data);
+    }
+
+    public static function sendValidatorError($data): string
+    {
+        self::setJsonHeader();
         http_response_code(422);
-
-        echo json_encode($data);
-
-        die();
+        return json_encode($data);
     }
 
-    public static function sendNotFoundError(): void
+    public static function sendNotFoundError(): string
     {
+        self::setJsonHeader();
         http_response_code(404);
-
-        echo json_encode([
+        return json_encode([
             'success' => false,
             'result' => [
                 'error' => "Not found"
             ]
         ]);
-
-        die();
     }
 
-    public static function sendServerError()
+    public static function sendServerError(): string
     {
+        self::setJsonHeader();
         http_response_code(500);
-
-        echo json_encode([
+        return json_encode([
             'success' => false,
             'result' => [
                 'error' => "Some problems with server"
             ]
         ]);
-
-        die();
     }
 }
