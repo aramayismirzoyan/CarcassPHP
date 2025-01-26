@@ -2,36 +2,49 @@
 
 namespace Providers;
 
+use App\Enums\ConfigPaths;
 use PDO;
 
-class PDOProvider
+final class PDOProvider
 {
     private static PDOProvider $object;
-    private PDO $connection;
+    private readonly PDO $connection;
 
-    private final function  __construct()
+    final private function __construct()
     {
-        $config = include('./config/db.php');
+        $config = include(ConfigPaths::DB->get());
 
         $this->connection = $this->getConnection($config);
     }
 
-    private function getConnection($config): PDO
-    {
-        $dsn = "mysql:host={$config['host']};dbname={$config['db']};charset=UTF8";
-        return new PDO($dsn, $config['user'], $config['password']);
-    }
-
     public static function create(): PDOProvider
     {
-        if(!isset(self::$object)) {
+        if (!isset(self::$object)) {
             self::$object = new PDOProvider();
         }
 
         return self::$object;
     }
 
-    public function get(string $sql): array
+    private function getDB($config)
+    {
+        if (defined('PHPUNIT_INTEGRATION_TESTSUITE')
+            && PHPUNIT_INTEGRATION_TESTSUITE === true) {
+            return $config['db_test'];
+        }
+
+        return $config['db'];
+    }
+
+    private function getConnection($config): PDO
+    {
+        $db = $this->getDB($config);
+
+        $dsn = "mysql:host={$config['host']};dbname={$db};charset=UTF8";
+        return new PDO($dsn, $config['user'], $config['password']);
+    }
+
+    public function execute(string $sql): array
     {
         $query = $this->connection->query($sql);
 
@@ -49,15 +62,15 @@ class PDOProvider
 
     public function insert($sql, $params): int|false
     {
-        $query= $this->connection->prepare($sql);
-        if($query->execute($params)) {
+        $query = $this->connection->prepare($sql);
+        if ($query->execute($params)) {
             return $this->connection->lastInsertId();
         } else {
             return false;
         }
     }
 
-    public function update(string $sql, array $params): array|false
+    public function update(string $sql, array $params, string $table): array|false
     {
         $query = $this->connection->prepare($sql);
 
@@ -68,8 +81,8 @@ class PDOProvider
             $query->bindParam(":{$key}", $value, $paramType);
         }
 
-        if($query->execute()) {
-            $sql = "SELECT * FROM users WHERE id=:id";
+        if ($query->execute()) {
+            $sql = "SELECT * FROM `{$table}` WHERE id=:id";
 
             return $this->getWithParams($sql, [
                 'id' => $params['id']
@@ -79,16 +92,25 @@ class PDOProvider
         }
     }
 
-    public function delete() :bool
+    public function delete($table): bool
     {
-        $query = $this->connection->prepare("DELETE from users");
+        $query = $this->connection->prepare("DELETE from `{$table}`");
         return $query->execute();
     }
 
-    public function deleteById($userId) :bool
+    public function deleteById($userId, $table): bool
     {
-        $sql = "DELETE FROM users WHERE id=?";
+        $sql = "DELETE FROM `{$table}` WHERE id=?";
         $query = $this->connection->prepare($sql);
         return $query->execute([$userId]);
+    }
+
+    public function truncateTable($table): void
+    {
+        if (preg_match('/^[a-zA-Z0-9_]+$/', $table)) {
+            $sql = "TRUNCATE TABLE `{$table}`";
+            $stmt = $this->connection->prepare($sql);
+            $stmt->execute();
+        }
     }
 }
