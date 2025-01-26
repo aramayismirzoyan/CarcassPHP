@@ -3,7 +3,7 @@
 namespace Providers;
 
 use App\Container\Container;
-use App\Enums\ConfigPaths;
+use App\Enums\ConfigsPaths;
 use App\Helpers\Request;
 use App\Helpers\Response;
 use Exception;
@@ -16,7 +16,7 @@ class RouteProvider
     private array $config;
     public function __construct(private readonly Container $container)
     {
-        $this->config = include(ConfigPaths::ROUTES->get());
+        $this->config = include(ConfigsPaths::ROUTES->get());
     }
 
     private function hasAction($controller, $action): bool
