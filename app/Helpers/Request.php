@@ -4,23 +4,39 @@ namespace App\Helpers;
 
 class Request
 {
-    public static function getParam($data, $key)
+    private readonly array $jsonData;
+    public function __construct()
     {
-        return $data[$key] ?? '';
+        $this->setJsonData();
     }
 
-    public static function getJson(): array
+    private function getInputData()
     {
         $json = file_get_contents('php://input');
 
-        if($json !== '') {
-            return json_decode(file_get_contents('php://input'), true);
+        if ($json !== '') {
+            return json_decode($json, true);
         }
 
         return [];
     }
 
-    public static function isValidType($type): bool
+    private function setJsonData()
+    {
+        $this->jsonData = $this->getInputData();
+    }
+
+    public function getParam($data, $key)
+    {
+        return $data[$key] ?? '';
+    }
+
+    public function getJsonData(): array
+    {
+        return $this->jsonData;
+    }
+
+    public function isValidType($type): bool
     {
         return $_SERVER['REQUEST_METHOD'] === $type;
     }
