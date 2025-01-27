@@ -14,8 +14,9 @@ class ContainerFactory
     {
         $container = new Container();
 
-        $container->set(UserService::class, function () {
-            $connection = PDOProvider::create();
+        $container->set(UserService::class, function ($container) {
+            $connection = $container->get(PDOProvider::class);
+            ;
             $repository = new UserRepository($connection);
             return new UserService($repository);
         });
@@ -28,9 +29,13 @@ class ContainerFactory
             return new TestService();
         });
 
-        $container->set(UserRepository::class, function () {
-            $connection = PDOProvider::create();
+        $container->set(UserRepository::class, function ($container) {
+            $connection = $container->get(PDOProvider::class);
             return new UserRepository($connection);
+        });
+
+        $container->set(PDOProvider::class, function () {
+            return PDOProvider::create();
         });
 
         return $container;

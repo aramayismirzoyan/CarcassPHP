@@ -3,28 +3,13 @@
 namespace Test\Application;
 
 use App\Container\ContainerFactory;
-use App\Controllers\UserController;
-use App\Helpers\Request;
 use App\Repositories\UserRepository;
-use App\Services\UserService;
 use Exception;
 use Providers\PDOProvider;
 use Test\Helpers\IntegrationTestCase;
 
 class UserControllerTest extends IntegrationTestCase
 {
-    public function getRequestMock($data)
-    {
-        $mock = $this->getMockBuilder(Request::class)
-            ->onlyMethods(['getJsonData'])
-            ->getMock();
-
-        $mock->method('getJsonData')
-            ->willReturn($data);
-
-        return $mock;
-    }
-
     public function createUser($user)
     {
         $connection = PDOProvider::create();
@@ -42,9 +27,7 @@ class UserControllerTest extends IntegrationTestCase
             'efficiency' => 10
         ]);
 
-        $requestMock = $this->getRequestMock([]);
-
-        $result = (new UserController($requestMock))->get();
+        $result = $this->get('/get');
 
         $data = [
                 'success' => true,
@@ -75,31 +58,20 @@ class UserControllerTest extends IntegrationTestCase
             ]
         ];
 
-        $requestMock = $this->getRequestMock([]);
-
-        $result = (new UserController($requestMock))->show($user['id']);
+        $result = $this->get("/get/{$user['id']}");
 
         $this->assertEquals(json_encode($data), $result);
     }
 
     public function test_create()
     {
-        $requestMock = $this->getRequestMock([
-            'full_name' => 'John',
-            'role' => 'developer',
-            'efficiency' => 10
-        ]);
+        $result = $this->post('/create', [
+                'full_name' => 'John',
+                'role' => 'developer',
+                'efficiency' => 10
+            ]);
 
-        $container = ContainerFactory::create();
-
-        try {
-            $service = $container->get(UserService::class);
-            $result = (new UserController($requestMock))->create($service);
-
-            $this->assertEquals('{"success":true,"result":{"id":1}}', $result);
-        } catch (Exception $e) {
-            echo $e->getMessage();
-        }
+        $this->assertEquals('{"success":true,"result":{"id":1}}', $result);
     }
 
     public function test_update()
@@ -114,26 +86,20 @@ class UserControllerTest extends IntegrationTestCase
             'full_name' => 'Nick'
         ];
 
-        $requestMock = $this->getRequestMock($newData);
+        $result = $this->patch("/update/{$user['id']}", $newData);
 
-        $container = ContainerFactory::create();
+        $result = json_decode($result, true);
 
         try {
-            $service = $container->get(UserService::class);
-            $result = (new UserController($requestMock))->update($service, $user['id']);
-            $result = json_decode($result, true);
-
-            $connection = PDOProvider::create();
-
-            $repository = new UserRepository($connection);
-
-            $user = $repository->hasUser($user['id']);
-
-            $this->assertEquals($newData['full_name'], $user[0]['full_name']);
-            $this->assertEquals($newData['full_name'], $result['result']['full_name']);
+            $repository = ContainerFactory::create()->get(UserRepository::class);
         } catch (Exception $e) {
-            echo $e->getMessage();
+            return;
         }
+
+        $updatedUser = $repository->hasUser($user['id']);
+
+        $this->assertEquals($newData['full_name'], $updatedUser[0]['full_name']);
+        $this->assertEquals($newData['full_name'], $result['result']['full_name']);
     }
 
     public function test_delete()
@@ -147,23 +113,18 @@ class UserControllerTest extends IntegrationTestCase
         $this->createUser($data);
         $this->createUser($data);
 
-        $requestMock = $this->getRequestMock([]);
-
-        $container = ContainerFactory::create();
+        $result = $this->delete('/delete');
 
         try {
-            $repository = $container->get(UserRepository::class);
-            $result = (new UserController($requestMock))->delete($repository);
-
-            $connection = PDOProvider::create();
-            $count = $connection->execute('SELECT COUNT(id) as count FROM users')[0]['count'];
-
-            $this->assertEquals(0, $count);
-            $this->assertEquals('{"success":true}', $result);
+            $connection = ContainerFactory::create()->get(PDOProvider::class);
         } catch (Exception $e) {
-            echo  $e->getMessage();
+            return;
         }
 
+        $count = $connection->execute('SELECT COUNT(id) as count FROM users')[0]['count'];
+
+        $this->assertEquals(0, $count);
+        $this->assertEquals('{"success":true}', $result);
     }
 
     public function test_delete_by_id()
@@ -177,37 +138,31 @@ class UserControllerTest extends IntegrationTestCase
         $user = $this->createUser($data);
         $secondUser = $this->createUser($data);
 
-        $requestMock = $this->getRequestMock([]);
-
-        $container = ContainerFactory::create();
+        $result = $this->delete("/delete/{$user['id']}");
 
         try {
-            $repository = $container->get(UserRepository::class);
-
-            $result = (new UserController($requestMock))->deleteById($repository, $user['id']);
-
-            $connection = PDOProvider::create();
-
-            $userCount = $connection->getWithParams('SELECT COUNT(id) as count FROM users WHERE id=:id', [
-                'id' => $user['id']
-            ])[0]['count'];
-
-            $this->assertEquals(0, $userCount);
-
-            $secondUserCount = $connection->getWithParams('SELECT COUNT(id) as count FROM users WHERE id=:id', [
-                'id' => $secondUser['id']
-            ])[0]['count'];
-
-            $this->assertEquals(1, $secondUserCount);
-
-            $expected = [
-                'success' => true,
-                'result' => $user
-            ];
-
-            $this->assertEquals(json_encode($expected), $result);
+            $connection = ContainerFactory::create()->get(PDOProvider::class);
         } catch (Exception $e) {
-            echo $e->getMessage();
+            return;
         }
+
+        $userCount = $connection->getWithParams('SELECT COUNT(id) as count FROM users WHERE id=:id', [
+            'id' => $user['id']
+        ])[0]['count'];
+
+        $this->assertEquals(0, $userCount);
+
+        $secondUserCount = $connection->getWithParams('SELECT COUNT(id) as count FROM users WHERE id=:id', [
+            'id' => $secondUser['id']
+        ])[0]['count'];
+
+        $this->assertEquals(1, $secondUserCount);
+
+        $expected = [
+            'success' => true,
+            'result' => $user
+        ];
+
+        $this->assertEquals(json_encode($expected), $result);
     }
 }

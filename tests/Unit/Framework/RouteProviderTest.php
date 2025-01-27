@@ -40,11 +40,13 @@ class RouteProviderTest extends TestCase
             );
 
         $route = new RouteProvider($containerMock);
-        $route->run();
+        $result = $route->run();
 
-        $this->expectOutputString(json_encode([
+        $expects = json_encode([
             'success' => true
-        ]));
+        ]);
+
+        $this->assertEquals($expects, $result);
     }
 
     public function test_simple_routs_container_binding_in_the_method()
@@ -55,12 +57,14 @@ class RouteProviderTest extends TestCase
         $container = ContainerFactory::create();
 
         $route = new RouteProvider($container);
-        $route->run();
+        $result = $route->run();
 
-        $this->expectOutputString(json_encode([
+        $expects = json_encode([
             'success' => true,
             'method' => 'get'
-        ]));
+        ]);
+
+        $this->assertEquals($expects, $result);
     }
 
     public function test_routs_with_parameters_container_binding_in_the_method()
@@ -71,12 +75,15 @@ class RouteProviderTest extends TestCase
         $container = ContainerFactory::create();
 
         $route = new RouteProvider($container);
-        $route->run();
 
-        $this->expectOutputString(json_encode([
+        $result = $route->run();
+
+        $expects = json_encode([
             'id' => 1,
             'service' => $container->get(TestService::class)->id()
-        ]));
+        ]);
+
+        $this->assertEquals($expects, $result);
     }
 
     public function test_routs_with_parameters_container_binding_in_the_method_reverse_parameters()
@@ -87,12 +94,15 @@ class RouteProviderTest extends TestCase
         $container = ContainerFactory::create();
 
         $route = new RouteProvider($container);
-        $route->run();
 
-        $this->expectOutputString(json_encode([
+        $result = $route->run();
+
+        $expects = json_encode([
             'id' => 1,
             'service' => $container->get(TestService::class)->id()
-        ]));
+        ]);
+
+        $this->assertEquals($expects, $result);
     }
 
     public function test_routs_with_parameters_container_binding_in_the_method_when_parameter_has_not_type_hint()
@@ -103,11 +113,13 @@ class RouteProviderTest extends TestCase
         $container = ContainerFactory::create();
 
         $route = new RouteProvider($container);
-        $route->run();
+        $result = $route->run();
 
-        $this->expectOutputString(json_encode([
+        $expects = json_encode([
             'id' => '1',
             'service' => $container->get(TestService::class)->id()
-        ]));
+        ]);
+
+        $this->assertEquals($expects, $result);
     }
 }

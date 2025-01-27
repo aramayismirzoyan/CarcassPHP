@@ -7,4 +7,4 @@ require './vendor/autoload.php';
 
 $container = ContainerFactory::create();
 $route = new RouteProvider($container);
-$route->run();
+echo $route->run();

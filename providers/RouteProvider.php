@@ -9,7 +9,6 @@ use App\Helpers\Response;
 use Exception;
 use ReflectionClass;
 use ReflectionMethod;
-use ReflectionNamedType;
 
 class RouteProvider
 {
@@ -38,39 +37,40 @@ class RouteProvider
         }
     }
 
-    private function handleRoutesWithParameters(): bool
+    private function handleRoutesWithParameters(): string
     {
         $route = $this->getRouteByUserId();
 
-        if (is_array($route)) {
-
-            $uri = '/'.$route['path'];
-
-            $config = $this->config['with_parameter'];
-
-            if (array_key_exists($uri, $config)) {
-                $controller = '\App\Controllers\\' . $config[$uri][0];
-                $action = $config[$uri][1];
-                $method = $config[$uri][2];
-
-                $request = new Request();
-
-                if ($this->hasAction($controller, $action) && $request->isValidType($method)) {
-                    $this->bind($controller, $action);
-                } else {
-                    echo Response::sendNotFoundError();
-                }
-            } else {
-                echo Response::sendNotFoundError();
-            }
-
-            return true;
+        if (!is_array($route)) {
+            throw new Exception();
         }
 
-        return false;
+        $uri = '/'.$route['path'];
+
+        $config = $this->config['with_parameter'];
+
+        if (array_key_exists($uri, $config)) {
+            $controller = '\App\Controllers\\' . $config[$uri][0];
+            $action = $config[$uri][1];
+            $method = $config[$uri][2];
+
+            try {
+                $request = $this->container->get(Request::class);
+            } catch (Exception $e) {
+                return Response::sendServerError();
+            }
+
+            if ($this->hasAction($controller, $action) && $request->isValidType($method)) {
+                return $this->bind($controller, $action);
+            } else {
+                return Response::sendNotFoundError();
+            }
+        } else {
+            return Response::sendNotFoundError();
+        }
     }
 
-    private function bind($controller, $action)
+    private function bind($controller, $action): string
     {
         $id = 0;
 
@@ -83,7 +83,7 @@ class RouteProvider
         try {
             $request = $this->container->get(Request::class);
         } catch (Exception $e) {
-            return;
+            return Response::sendServerError();
         }
 
         $reflector = new ReflectionClass($controller);
@@ -110,16 +110,15 @@ class RouteProvider
                 try {
                     $arguments[] = $this->container->get($parameter->getType()->getName());
                 } catch (Exception $e) {
-                    echo Response::sendServerError();
-                    return;
+                    return Response::sendServerError();
                 }
             }
         }
 
-        echo $reflectionMethod->invokeArgs($instance, $arguments);
+        return $reflectionMethod->invokeArgs($instance, $arguments);
     }
 
-    private function handleSimpleRoutes(): void
+    private function handleSimpleRoutes(): string
     {
         $requestUri = strtok($_SERVER["REQUEST_URI"], '?');
 
@@ -133,25 +132,29 @@ class RouteProvider
             try {
                 $request = $this->container->get(Request::class);
             } catch (Exception $e) {
-                return;
+                return Response::sendServerError();
             }
 
-            if ($this->hasAction($controller, $action) && (new Request())->isValidType($method)) {
-                $this->bind($controller, $action);
+            if ($this->hasAction($controller, $action) && $request->isValidType($method)) {
+                return $this->bind($controller, $action);
             } else {
-                echo Response::sendNotFoundError();
+                return Response::sendNotFoundError();
             }
         } else {
-            echo Response::sendNotFoundError();
+            return Response::sendNotFoundError();
         }
     }
 
-    public function run(): void
+    public function run(): string
     {
-        if ($this->handleRoutesWithParameters()) {
-            return;
+        try {
+            return $this->handleRoutesWithParameters();
+        } catch (Exception $e) {
+            try {
+                return $this->handleSimpleRoutes();
+            } catch (Exception $e) {
+                return Response::sendServerError();
+            }
         }
-
-        $this->handleSimpleRoutes();
     }
 }
