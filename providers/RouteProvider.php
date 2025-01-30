@@ -37,18 +37,8 @@ class RouteProvider
         }
     }
 
-    private function handleRoutesWithParameters(): string
+    private function runAction($uri, $config): string
     {
-        $route = $this->getRouteByUserId();
-
-        if (!is_array($route)) {
-            throw new Exception();
-        }
-
-        $uri = '/'.$route['path'];
-
-        $config = $this->config['with_parameter'];
-
         if (array_key_exists($uri, $config)) {
             $controller = '\App\Controllers\\' . $config[$uri][0];
             $action = $config[$uri][1];
@@ -68,6 +58,21 @@ class RouteProvider
         } else {
             return Response::sendNotFoundError();
         }
+    }
+
+    private function handleRoutesWithParameters(): string
+    {
+        $route = $this->getRouteByUserId();
+
+        if (!is_array($route)) {
+            throw new Exception();
+        }
+
+        $uri = '/'.$route['path'];
+
+        $config = $this->config['with_parameter'];
+
+        return $this->runAction($uri, $config);
     }
 
     private function bind($controller, $action): string
@@ -124,25 +129,7 @@ class RouteProvider
 
         $config = $this->config['simple'];
 
-        if (array_key_exists($requestUri, $config)) {
-            $controller = '\App\Controllers\\' . $config[$requestUri][0];
-            $action = $config[$requestUri][1];
-            $method = $config[$requestUri][2];
-
-            try {
-                $request = $this->container->get(Request::class);
-            } catch (Exception $e) {
-                return Response::sendServerError();
-            }
-
-            if ($this->hasAction($controller, $action) && $request->isValidType($method)) {
-                return $this->bind($controller, $action);
-            } else {
-                return Response::sendNotFoundError();
-            }
-        } else {
-            return Response::sendNotFoundError();
-        }
+        return $this->runAction($requestUri, $config);
     }
 
     public function run(): string
