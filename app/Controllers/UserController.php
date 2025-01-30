@@ -10,7 +10,7 @@ use App\Validators\NewUserValidator;
 use App\Validators\UpdateUserValidator;
 use Providers\PDOProvider;
 
-class UserController
+class UserController extends Controller
 {
     public function __construct(private readonly Request $request)
     {

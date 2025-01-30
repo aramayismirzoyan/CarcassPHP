@@ -5,7 +5,7 @@ namespace App\Controllers;
 use App\Helpers\Request;
 use App\Services\TestService;
 
-class TestController
+class TestController extends Controller
 {
     public function __construct(private readonly Request $request)
     {

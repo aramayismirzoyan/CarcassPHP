@@ -4,15 +4,17 @@ namespace Providers;
 
 use App\Container\Container;
 use App\Enums\ConfigsPaths;
+use App\Exceptions\ContainerException;
 use App\Helpers\Request;
 use App\Helpers\Response;
 use Exception;
 use ReflectionClass;
-use ReflectionMethod;
+use ReflectionException;
 
 class RouteProvider
 {
     private array $config;
+
     public function __construct(private readonly Container $container)
     {
         $this->config = include(ConfigsPaths::ROUTES->get());
@@ -37,7 +39,7 @@ class RouteProvider
         }
     }
 
-    private function runAction($uri, $config): string
+    private function runAction($uri, $config, $id = false): string
     {
         if (array_key_exists($uri, $config)) {
             $controller = '\App\Controllers\\' . $config[$uri][0];
@@ -51,7 +53,7 @@ class RouteProvider
             }
 
             if ($this->hasAction($controller, $action) && $request->isValidType($method)) {
-                return $this->bind($controller, $action);
+                return $this->bind($controller, $action, $id);
             } else {
                 return Response::sendNotFoundError();
             }
@@ -65,39 +67,43 @@ class RouteProvider
         $route = $this->getRouteByUserId();
 
         if (!is_array($route)) {
-            throw new Exception();
+            throw new Exception('This route hasn\'t parameters');
         }
 
         $uri = '/'.$route['path'];
 
         $config = $this->config['with_parameter'];
 
-        return $this->runAction($uri, $config);
+        return $this->runAction($uri, $config, $route['id']);
     }
 
-    private function bind($controller, $action): string
+    private function createControllerReflection($controller): ReflectionClass
     {
-        $id = 0;
-
-        $route = $this->getRouteByUserId();
-
-        if (is_array($route)) {
-            $id = $route['id'];
+        try {
+            $reflector = new ReflectionClass($controller);
+        } catch (Exception $e) {
+            throw new Exception('The class is not fount');
         }
 
+        return $reflector;
+    }
+
+    private function invokeMethodArgs(ReflectionClass $reflector, $arguments, $action)
+    {
         try {
             $request = $this->container->get(Request::class);
-        } catch (Exception $e) {
-            return Response::sendServerError();
+            $instance = $reflector->newInstanceArgs([$request]);
+            return $reflector->getMethod($action)->invokeArgs($instance, $arguments);
+        } catch (ContainerException $e) {
+            throw new Exception('Request is not resolved by dependency container');
+        } catch (ReflectionException $e) {
+            throw new Exception($e);
         }
+    }
 
-        $reflector = new ReflectionClass($controller);
-
-        $instance = $reflector->newInstanceArgs([$request]);
-
-        $reflectionMethod = new ReflectionMethod($controller, $action);
-
-        $parameters = $reflector->getMethod($action)->getParameters();
+    private function createInvocableArguments($parameters, $id): array
+    {
+        $id = $id ? $id : 0;
 
         $arguments = [];
 
@@ -112,15 +118,28 @@ class RouteProvider
                     default => ''
                 };
             } else {
+                $classname = $parameter->getType()->getName();
                 try {
-                    $arguments[] = $this->container->get($parameter->getType()->getName());
+                    $arguments[] = $this->container->get($classname);
                 } catch (Exception $e) {
-                    return Response::sendServerError();
+                    throw new Exception("$classname is not resolved by dependency container");
                 }
             }
         }
 
-        return $reflectionMethod->invokeArgs($instance, $arguments);
+        return $arguments;
+    }
+
+    private function bind($controller, $action, $id): string
+    {
+        try {
+            $reflector = $this->createControllerReflection($controller);
+            $parameters = $reflector->getMethod($action)->getParameters();
+            $arguments = $this->createInvocableArguments($parameters, $id);
+            return $this->invokeMethodArgs($reflector, $arguments, $action);
+        } catch (Exception $e) {
+            return Response::sendServerError();
+        }
     }
 
     private function handleSimpleRoutes(): string

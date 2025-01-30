@@ -2,7 +2,7 @@
 
 namespace App\Container;
 
-use Exception;
+use App\Exceptions\ContainerException;
 
 class Container
 {
@@ -16,7 +16,7 @@ class Container
     public function get(string $id)
     {
         if (! isset($this->bindings[$id])) {
-            throw new Exception("Container does not exist.");
+            throw new ContainerException("Container does not exist.");
         }
 
         $factory = $this->bindings[$id];
