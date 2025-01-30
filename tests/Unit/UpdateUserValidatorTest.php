@@ -1,6 +1,6 @@
 <?php
 
-namespace Test\Integration;
+namespace Test\Unit;
 
 use App\Validators\UpdateUserValidator;
 use PHPUnit\Framework\TestCase;

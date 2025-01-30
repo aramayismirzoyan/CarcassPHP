@@ -1,6 +1,6 @@
 <?php
 
-namespace Test\Unit\Framework;
+namespace Test\Integration;
 
 use App\Container\Container;
 use App\Container\ContainerFactory;

@@ -1,6 +1,6 @@
 <?php
 
-namespace Test\Integration;
+namespace Test\Unit;
 
 use App\Helpers\Response;
 use App\Repositories\UserRepository;
